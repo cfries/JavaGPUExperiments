@@ -7,8 +7,11 @@
 package com.christianfries.cuda.examples;
 
 import static jcuda.driver.JCudaDriver.cuCtxCreate;
+import static jcuda.driver.JCudaDriver.cuCtxSynchronize;
 import static jcuda.driver.JCudaDriver.cuDeviceGet;
 import static jcuda.driver.JCudaDriver.cuInit;
+import static jcuda.driver.JCudaDriver.cuLaunchKernel;
+import static jcuda.driver.JCudaDriver.cuMemcpyDtoH;
 import static jcuda.driver.JCudaDriver.cuModuleGetFunction;
 import static jcuda.driver.JCudaDriver.cuModuleLoad;
 
@@ -18,8 +21,11 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import jcuda.LogLevel;
+import jcuda.Pointer;
+import jcuda.Sizeof;
 import jcuda.driver.CUcontext;
 import jcuda.driver.CUdevice;
+import jcuda.driver.CUdeviceptr;
 import jcuda.driver.CUfunction;
 import jcuda.driver.CUmodule;
 import jcuda.driver.JCudaDriver;
@@ -45,6 +51,7 @@ public class RandomVariableSimpleCuda implements RandomVariableSimpleInterface {
 	public final static CUcontext context;
 
 	private final static CUfunction add;
+	private final static CUfunction div;
 
 	// Initalize cuda
 	static {
@@ -73,13 +80,15 @@ public class RandomVariableSimpleCuda implements RandomVariableSimpleInterface {
 		cuModuleLoad(module, ptxFileName);
 
 		add = new CUfunction();
-		cuModuleGetFunction(add, module, "add");
+		cuModuleGetFunction(add, module, "cuAdd");
+		div = new CUfunction();
+		cuModuleGetFunction(div, module, "cuDiv");
 	}
 
-
 	// Need to ref to data here
+	private CUdeviceptr realizations;
 	private long size;
-	
+
 	/**
 	 * Create a stochastic random variable.
 	 *
@@ -87,14 +96,49 @@ public class RandomVariableSimpleCuda implements RandomVariableSimpleInterface {
 	 */
 	public RandomVariableSimpleCuda(float[] realisations) {
 		super();
+		this.realizations = createCUdeviceptr(realisations);
 		this.size = realisations.length;
-		// DO STUFF HERE
 	}
 
+	public RandomVariableSimpleCuda(CUdeviceptr realizations, long size) {
+		this.realizations = realizations;
+		this.size = size;
+	}
+
+	private CUdeviceptr createCUdeviceptr(long size) {
+		CUdeviceptr cuDevicePtr = getCUdeviceptr(size);
+		return cuDevicePtr;
+	}
+
+	public static CUdeviceptr getCUdeviceptr(long size) {
+		CUdeviceptr cuDevicePtr = new CUdeviceptr();
+		int succ = JCudaDriver.cuMemAlloc(cuDevicePtr, size * Sizeof.FLOAT);
+		if(succ != 0) {
+			cuDevicePtr = null;
+			throw new RuntimeException("Failed creating device vector "+ cuDevicePtr + " with size=" + size);
+		}
+
+		return cuDevicePtr;
+	}
+
+	/**
+	 * Create a vector on device and copy host vector to it.
+	 * 
+	 * @param values Host vector.
+	 * @return Pointer to device vector.
+	 */
+	private CUdeviceptr createCUdeviceptr(float[] values) {
+		CUdeviceptr cuDevicePtr = createCUdeviceptr((long)values.length);
+		JCudaDriver.cuMemcpyHtoD(cuDevicePtr, Pointer.to(values),
+				(long)values.length * Sizeof.FLOAT);
+		return cuDevicePtr;
+	}
 
 	@Override
 	protected void finalize() throws Throwable {
-		// CLEAN UP STUFF HERE
+		System.out.println("Finalizing " + realizations);
+		if(realizations != null) JCudaDriver.cuMemFree(realizations);
+		super.finalize();
 	}
 
 
@@ -105,21 +149,55 @@ public class RandomVariableSimpleCuda implements RandomVariableSimpleInterface {
 
 	@Override
 	public float[] getRealizations() {
-		// Return data here
-		return null;
+		float[] result = new float[(int)size];
+		cuMemcpyDtoH(Pointer.to(result), realizations, size * Sizeof.FLOAT);
+		return result;
 	}
 
 	@Override
 	public RandomVariableSimpleInterface add(RandomVariableSimpleInterface randomVariable) {
-		// Do stuff here
-		return null;
+		CUdeviceptr result = callCudaFunction(add, new Pointer[] {
+				Pointer.to(new int[] { (int)size() }),
+				Pointer.to(realizations),
+				Pointer.to(((RandomVariableSimpleCuda)randomVariable).realizations),
+				new Pointer()}
+				);
+
+		return new RandomVariableSimpleCuda(result, size());
 	}
 
 	@Override
-	public RandomVariableSimpleInterface div(
-			RandomVariableSimpleInterface randomVariable) {
-		// TODO Auto-generated method stub
-		return null;
+	public RandomVariableSimpleInterface div(RandomVariableSimpleInterface randomVariable) {
+		CUdeviceptr result = callCudaFunction(div, new Pointer[] {
+				Pointer.to(new int[] { (int)size() }),
+				Pointer.to(realizations),
+				Pointer.to(((RandomVariableSimpleCuda)randomVariable).realizations),
+				new Pointer()}
+				);
+
+		return new RandomVariableSimpleCuda(result, size());
+	}
+
+	private CUdeviceptr callCudaFunction(CUfunction function, Pointer[] arguments) {
+		// Allocate device output memory
+		CUdeviceptr result = getCUdeviceptr((long)size());
+		arguments[arguments.length-1] = Pointer.to(result);
+
+		// Set up the kernel parameters: A pointer to an array
+		// of pointers which point to the actual values.
+		Pointer kernelParameters = Pointer.to(arguments);
+
+		// Call the kernel function.
+		int blockSizeX = 256;
+		int gridSizeX = (int)Math.ceil((double)size() / blockSizeX);
+		cuLaunchKernel(function,
+				gridSizeX,  1, 1,      // Grid dimension
+				blockSizeX, 1, 1,      // Block dimension
+				0, null,               // Shared memory size and stream
+				kernelParameters, null // Kernel- and extra parameters
+				);
+		cuCtxSynchronize();
+		return result;
 	}
 
 	/**
@@ -197,7 +275,7 @@ public class RandomVariableSimpleCuda implements RandomVariableSimpleInterface {
 	 */
 	private static byte[] toByteArray(InputStream inputStream)
 			throws IOException
-	{
+			{
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
 		byte buffer[] = new byte[8192];
 		while (true)
@@ -210,6 +288,6 @@ public class RandomVariableSimpleCuda implements RandomVariableSimpleInterface {
 			baos.write(buffer, 0, read);
 		}
 		return baos.toByteArray();
-	}
+			}
 
 }
