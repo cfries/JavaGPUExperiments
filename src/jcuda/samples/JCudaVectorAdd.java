@@ -5,12 +5,31 @@ package jcuda.samples;
  *
  * Copyright 2011 Marco Hutter - http://www.jcuda.org
  */
-import static jcuda.driver.JCudaDriver.*;
+import static jcuda.driver.JCudaDriver.cuCtxCreate;
+import static jcuda.driver.JCudaDriver.cuCtxSynchronize;
+import static jcuda.driver.JCudaDriver.cuDeviceGet;
+import static jcuda.driver.JCudaDriver.cuInit;
+import static jcuda.driver.JCudaDriver.cuLaunchKernel;
+import static jcuda.driver.JCudaDriver.cuMemAlloc;
+import static jcuda.driver.JCudaDriver.cuMemFree;
+import static jcuda.driver.JCudaDriver.cuMemcpyDtoH;
+import static jcuda.driver.JCudaDriver.cuMemcpyHtoD;
+import static jcuda.driver.JCudaDriver.cuModuleGetFunction;
+import static jcuda.driver.JCudaDriver.cuModuleLoad;
 
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 
-import jcuda.*;
-import jcuda.driver.*;
+import jcuda.Pointer;
+import jcuda.Sizeof;
+import jcuda.driver.CUcontext;
+import jcuda.driver.CUdevice;
+import jcuda.driver.CUdeviceptr;
+import jcuda.driver.CUfunction;
+import jcuda.driver.CUmodule;
+import jcuda.driver.JCudaDriver;
 
 /**
  * This is a sample class demonstrating how to use the JCuda driver

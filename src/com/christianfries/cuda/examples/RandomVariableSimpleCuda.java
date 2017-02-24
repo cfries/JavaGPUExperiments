@@ -1,16 +1,14 @@
 /*
  * (c) Copyright Christian P. Fries, Germany. All rights reserved. Contact: email@christian-fries.de.
  *
- * Created on 09.02.2006
+ * Created on 24.02.2017
  */
 
+package com.christianfries.cuda.examples;
 
 import static jcuda.driver.JCudaDriver.cuCtxCreate;
-import static jcuda.driver.JCudaDriver.cuCtxSynchronize;
 import static jcuda.driver.JCudaDriver.cuDeviceGet;
 import static jcuda.driver.JCudaDriver.cuInit;
-import static jcuda.driver.JCudaDriver.cuLaunchKernel;
-import static jcuda.driver.JCudaDriver.cuMemcpyDtoH;
 import static jcuda.driver.JCudaDriver.cuModuleGetFunction;
 import static jcuda.driver.JCudaDriver.cuModuleLoad;
 
@@ -18,18 +16,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.ref.ReferenceQueue;
-import java.lang.ref.WeakReference;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Logger;
 
 import jcuda.LogLevel;
-import jcuda.Pointer;
-import jcuda.Sizeof;
 import jcuda.driver.CUcontext;
 import jcuda.driver.CUdevice;
-import jcuda.driver.CUdeviceptr;
 import jcuda.driver.CUfunction;
 import jcuda.driver.CUmodule;
 import jcuda.driver.JCudaDriver;

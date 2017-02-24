@@ -1,9 +1,10 @@
 /*
  * (c) Copyright Christian P. Fries, Germany. All rights reserved. Contact: email@christian-fries.de.
  *
- * Created on 10.02.2004
+ * Created on 24.02.2017
  */
 
+package com.christianfries.cuda.examples;
 
 import org.junit.Assert;
 import org.junit.Test;
