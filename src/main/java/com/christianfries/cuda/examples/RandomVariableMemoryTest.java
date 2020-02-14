@@ -20,7 +20,7 @@ public class RandomVariableMemoryTest {
 	@Test
 	public void testRandomVariableStochastic() throws InterruptedException {
 		int numberOfPath = 1000000;
-		int numberOfRepetitions = 10;
+		int numberOfRepetitions = 1000;
 		
 		float[] values = new float[numberOfPath];
 		for(int i=0; i<values.length; i++) values[i] = i;
@@ -31,6 +31,7 @@ public class RandomVariableMemoryTest {
 		RandomVariableSimpleInterface result = null;
 		for(int j=0; j<numberOfRepetitions; j++) {
 			result = randomVariable.add(randomVariable);
+			System.gc();
 		}
 		
 		float[] resultArray = result.getRealizations();
