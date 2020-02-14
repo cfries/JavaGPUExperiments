@@ -9,11 +9,13 @@
 
 	<properties>
 		<src.main.java.dir>src/main/java</src.main.java.dir>
+		<src.main.java.dir>src/test/java</src.main.java.dir>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 
 	<build>
 		<sourceDirectory>${src.main.java.dir}</sourceDirectory>
+		<testSourceDirectory>${src.test.java.dir}</testSourceDirectory>
 
 		<resources>
 			<resource>
