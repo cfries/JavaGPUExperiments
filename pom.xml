@@ -5,13 +5,28 @@
 	<groupId>com.christianfries</groupId>
 	<artifactId>JavaGPUExperiments</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
+
 	<name>JavaGPUExperiments</name>
+	<description>
+		Some experiments and illustrative code related to OpenCL, Cuda, GPU Computing, JOCL and JCuda.
+	</description>
+	<url>http://www.christianfries.com/java/gpu-experiments</url>
 
 	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<src.main.java.dir>src/main/java</src.main.java.dir>
 		<src.test.java.dir>src/test/java</src.test.java.dir>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<!-- maven plugins -->
+		<maven.compiler-plugin.version>3.8.1</maven.compiler-plugin.version>
 	</properties>
+
+	<licenses>
+		<license>
+			<name>Apache License, Version 2.0</name>
+			<url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+			<distribution>repo</distribution>
+		</license>
+	</licenses>
 
 	<build>
 		<sourceDirectory>${src.main.java.dir}</sourceDirectory>
@@ -30,11 +45,12 @@
 
 		<plugins>
 			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.8.0</version>
+				<version>${maven.compiler-plugin.version}</version>
 				<configuration>
-					<source>1.8</source>
-					<target>1.8</target>
+					<source>11</source>
+					<target>11</target>
 				</configuration>
 			</plugin>
 		</plugins>
@@ -156,8 +172,6 @@
 			</dependencies>
 		</profile>
 	</profiles>
-
-
 
 	<repositories>
 		<repository>
