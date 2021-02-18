@@ -77,9 +77,9 @@ public class OpenCLSpeedTest
 
 		final int size = 100000000;		// 100 million
 
-		int steps = 20000;
+		int steps = 2000;
 
-		OpenCLSpeedTest testProgramOnGPU = new OpenCLSpeedTest(CL_DEVICE_TYPE_GPU, 0, 128);
+		OpenCLSpeedTest testProgramOnGPU = new OpenCLSpeedTest(CL_DEVICE_TYPE_GPU, 0, 1);
 		System.out.print("GPU, 128: ");
 		testProgramOnGPU.runWithInitialValuesAndRates(i -> 1.0f, i -> 1.0f, size, steps);
 		System.out.print("GPU, 128: ");
@@ -101,9 +101,9 @@ public class OpenCLSpeedTest
 		System.out.print("CPU, 128: ");
 		testProgramOnCPU.runWithInitialValuesAndRates(i -> 1.0f, i -> 1.0f, size, steps);
 		System.out.print("CPU, 128: ");
-		testProgramOnCPU.runWithInitialValuesAndRates(i -> i < size/2 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
-		System.out.print("CPU, 128: ");
 		testProgramOnCPU.runWithInitialValuesAndRates(i -> 0.0f, i -> 1.0f, size, steps);
+		System.out.print("CPU, 128: ");
+		testProgramOnCPU.runWithInitialValuesAndRates(i -> i < size/2 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
 		System.out.print("CPU, 128: ");
 		testProgramOnCPU.runWithInitialValuesAndRates(i -> i % 2 == 0 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
 		System.out.print("CPU, 128: ");
@@ -113,6 +113,21 @@ public class OpenCLSpeedTest
 		System.out.print("CPU, 128: ");
 		testProgramOnCPU.runWithInitialValuesAndRates(i -> (i/24) % 2 == 0 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
 
+		OpenCLSpeedTest testProgramOnCPU2 = new OpenCLSpeedTest(CL_DEVICE_TYPE_CPU, 0, 1);
+		System.out.print("CPU, 128: ");
+		testProgramOnCPU2.runWithInitialValuesAndRates(i -> 1.0f, i -> 1.0f, size, steps);
+		System.out.print("CPU, 128: ");
+		testProgramOnCPU2.runWithInitialValuesAndRates(i -> 0.0f, i -> 1.0f, size, steps);
+		System.out.print("CPU, 128: ");
+		testProgramOnCPU2.runWithInitialValuesAndRates(i -> i < size/2 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
+		System.out.print("CPU, 128: ");
+		testProgramOnCPU2.runWithInitialValuesAndRates(i -> i % 2 == 0 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
+		System.out.print("CPU, 128: ");
+		testProgramOnCPU2.runWithInitialValuesAndRates(i -> (i/2) % 2 == 0 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
+		System.out.print("CPU, 128: ");
+		testProgramOnCPU2.runWithInitialValuesAndRates(i -> (i/8) % 2 == 0 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
+		System.out.print("CPU, 128: ");
+		testProgramOnCPU2.runWithInitialValuesAndRates(i -> (i/24) % 2 == 0 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
 	}
 
 	/**
@@ -179,7 +194,6 @@ public class OpenCLSpeedTest
 					+ "             const int steps)"
 					+ "{"
 					+ "  int gid = get_global_id(0);"
-					+ "  int size = get_global_size(0);"
 					+ "  float x = a[gid];"
 					+ "  if(x != 0.0) {"
 					+ "    float r = b[gid];"
