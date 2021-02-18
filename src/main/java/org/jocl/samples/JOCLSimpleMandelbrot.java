@@ -36,7 +36,6 @@ import java.awt.event.MouseWheelListener;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.io.BufferedReader;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
@@ -74,7 +73,7 @@ public class JOCLSimpleMandelbrot
 		{
 			public void run()
 			{
-				new JOCLSimpleMandelbrot(500,500);
+				new JOCLSimpleMandelbrot(1000,1000);
 			}
 		});
 	}
@@ -418,8 +417,8 @@ public class JOCLSimpleMandelbrot
 
 		final int maxIterations = 2000;
 		clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(pixelMem));
-		clSetKernelArg(kernel, 1, Sizeof.cl_uint, Pointer.to(new int[]{sizeX}));
-		clSetKernelArg(kernel, 2, Sizeof.cl_uint, Pointer.to(new int[]{sizeY}));
+		clSetKernelArg(kernel, 1, Sizeof.cl_uint, Pointer.to(new int[]{ sizeX }));
+		clSetKernelArg(kernel, 2, Sizeof.cl_uint, Pointer.to(new int[]{ sizeY }));
 		clSetKernelArg(kernel, 3, Sizeof.cl_float, Pointer.to(new float[]{ x0 }));
 		clSetKernelArg(kernel, 4, Sizeof.cl_float, Pointer.to(new float[]{ y0 }));
 		clSetKernelArg(kernel, 5, Sizeof.cl_float, Pointer.to(new float[]{ x1 }));
@@ -428,17 +427,13 @@ public class JOCLSimpleMandelbrot
 		clSetKernelArg(kernel, 8, Sizeof.cl_mem, Pointer.to(colorMapMem));
 		clSetKernelArg(kernel, 9, Sizeof.cl_int, Pointer.to(new int[]{ colorMap.length }));
 
-		clEnqueueNDRangeKernel(commandQueue, kernel, 2, null,
-				globalWorkSize, null, 0, null, null);
+		clEnqueueNDRangeKernel(commandQueue, kernel, 2, null, globalWorkSize, null, 0, null, null);
 
 		// Read the pixel data into the BufferedImage
 		final DataBufferInt dataBuffer = (DataBufferInt)image.getRaster().getDataBuffer();
 		final int data[] = dataBuffer.getData();
-		clEnqueueReadBuffer(commandQueue, pixelMem, CL_TRUE, 0,
-				Sizeof.cl_int * sizeY * sizeX, Pointer.to(data), 0, null, null);
+		clEnqueueReadBuffer(commandQueue, pixelMem, CL_TRUE, 0, Sizeof.cl_int * sizeY * sizeX, Pointer.to(data), 0, null, null);
 
 		imageComponent.repaint();
 	}
-
-
 }
