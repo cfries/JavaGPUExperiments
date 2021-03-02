@@ -76,7 +76,7 @@ public class OpenCLSpeedTest
 
 		final int size = 100000000;		// 100 million
 
-		int steps = 2000*10;
+		int steps = 2000;
 
 		OpenCLSpeedTest testProgramOnGPU = new OpenCLSpeedTest(CL_DEVICE_TYPE_GPU, 0, 1);
 		System.out.print("GPU, 128: ");
