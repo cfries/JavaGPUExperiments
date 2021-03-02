@@ -220,8 +220,8 @@ public class OpenCLSpeedTest
 					+ "    for(int j=0; j<steps; j++) {"
 					+ "      x = x + r * x / steps;"
 					+ "    }"
+					+ "    c[i] = x;"					
 					+ "  }"
-					+ "  c[i] = x;"					
 					+ "}";
 
 
