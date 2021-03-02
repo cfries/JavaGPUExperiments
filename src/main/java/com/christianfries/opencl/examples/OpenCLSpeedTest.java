@@ -46,13 +46,13 @@ import org.jocl.cl_platform_id;
 import org.jocl.cl_program;
 
 /**
- * An example illustrating the behavior of SIMD versus MIMD on code that contains an if-branch.
+ * An example illustrating the behaviour of SIMD versus MIMD on code that contains an if-branch.
  * 
  * The numerical algorithms performs the calculation
  * 	x(i+1) = x(i) + r * x(i) / DeltaT
  * which is a simple Euler-Scheme approximation for x(0) * exp(r T). The calculation is performed is x(0) != 0.
  * 
- * Due to synchronization (SIMD) in GPUs and due to branch prediction in CPUs the behavior of the run-time highly depends on the structure of the x(0) vector.
+ * Due to synchronisation (SIMD) in GPUs and due to branch prediction in CPUs the behaviour of the run-time highly depends on the structure of the x(0) vector.
  * The performance characteristics depend on the ordering of the initial value.
  * 
  * @author Christian Fries
@@ -64,7 +64,6 @@ public class OpenCLSpeedTest
 	final cl_device_id device;
 	final cl_context context;
 	final cl_command_queue commandQueue;
-
 
 	/**
 	 * The entry point of this sample
@@ -186,7 +185,7 @@ public class OpenCLSpeedTest
 	/**
 	 * The source code of the OpenCL program to execute
 	 */
-	private static String programSource =
+	private static String programSource1 =
 			"__kernel void "+
 					"sampleKernel(__global const float *a,"
 					+ "             __global const float *b,"
@@ -202,6 +201,27 @@ public class OpenCLSpeedTest
 					+ "    }"
 					+ "  }"
 					+ "  c[gid] = x;"					
+					+ "}";
+
+	/**
+	 * The source code of the OpenCL program to execute
+	 */
+	private static String programSource =
+			"__kernel void "+
+					"sampleKernel(__global const float *a,"
+					+ "             __global const float *b,"
+					+ "             __global float *c,"
+					+ "             const int length)"
+					+ "{"
+					+ "  int steps = get_global_id(0);"
+					+ "  for(int i=0; i<length; i++) {"
+					+ "    float x = a[i];"
+					+ "    float r = b[i];"
+					+ "    for(int j=0; j<steps; j++) {"
+					+ "      x = x + r * x / steps;"
+					+ "    }"
+					+ "  }"
+					+ "  c[i] = x;"					
 					+ "}";
 
 
