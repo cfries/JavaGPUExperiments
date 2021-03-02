@@ -275,7 +275,7 @@ public class OpenCLSpeedTest
 
 		// Set the work-item dimensions
 		final long global_work_size[] = new long[] { size };
-		final long local_work_size[] = new long[] { localWorkSize };
+		final long local_work_size[] = null; //new long[] { localWorkSize };
 
 		long timePrepareEnd = System.currentTimeMillis();
 
