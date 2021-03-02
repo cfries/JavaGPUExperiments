@@ -78,7 +78,7 @@ public class OpenCLSpeedTest
 
 		int steps = 2000;
 
-		OpenCLSpeedTest testProgramOnGPU = new OpenCLSpeedTest(CL_DEVICE_TYPE_GPU, 0, 1);
+		OpenCLSpeedTest testProgramOnGPU = new OpenCLSpeedTest(CL_DEVICE_TYPE_GPU, 0, 128);
 		System.out.print("GPU, 128: ");
 		testProgramOnGPU.runWithInitialValuesAndRates(i -> 1.0f, i -> 1.0f, size, steps);
 		System.out.print("GPU, 128: ");
