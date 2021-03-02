@@ -74,9 +74,9 @@ public class OpenCLSpeedTest
 	{
 		System.out.println("Warning: The program may lead to issues (crash) in case you GPU is busy doing other stuff, e.g. driving a large external monitor.");
 
-		final int size = 100000000*10;		// 100 million
+		final int size = 100000000;		// 100 million
 
-		int steps = 2000;
+		int steps = 2000*10;
 
 		OpenCLSpeedTest testProgramOnGPU = new OpenCLSpeedTest(CL_DEVICE_TYPE_GPU, 0, 1);
 		System.out.print("GPU, 128: ");
