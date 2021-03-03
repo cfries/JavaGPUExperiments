@@ -117,10 +117,11 @@ public class OpenCLSpeedTest
 		 * OpenCL with CPU
 		 */
 		System.out.println("OpenCL on CPU:");
-		OpenCLSpeedTest testProgramOnCPU1 = new OpenCLSpeedTest(Method.OPEN_CL_CPU);
+		OpenCLSpeedTest testProgramOnCPU = new OpenCLSpeedTest(Method.OPEN_CL_CPU);
 		for(Function<Integer, Float> initialValue : initialValues) {
-			testProgramOnCPU1.runWithInitialValuesAndRates(initialValue, i -> 1.0f, size, steps);
+			testProgramOnCPU.runWithInitialValuesAndRates(initialValue, i -> 1.0f, size, steps);
 		}
+		testProgramOnCPU.cleanUp();
 
 		System.out.println();
 
