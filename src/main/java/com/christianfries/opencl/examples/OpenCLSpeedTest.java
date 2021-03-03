@@ -30,6 +30,7 @@ import static org.jocl.CL.clReleaseMemObject;
 import static org.jocl.CL.clReleaseProgram;
 import static org.jocl.CL.clSetKernelArg;
 
+import java.util.List;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 
@@ -45,6 +46,8 @@ import org.jocl.cl_mem;
 import org.jocl.cl_platform_id;
 import org.jocl.cl_program;
 
+import com.christianfries.opencl.examples.OpenCLSpeedTest.Method;
+
 /**
  * An example illustrating the behaviour of SIMD versus MIMD on code that contains an if-branch.
  * 
@@ -59,8 +62,15 @@ import org.jocl.cl_program;
  */
 public class OpenCLSpeedTest
 {
-	private final static int localWorkSize = 128;
+	public enum Method {
+		JAVA,				// Use native Java implementation
+		OPEN_CL_CPU,		// Use OpenCL implementation on CPU
+		OPEN_CL_GPU,		// Use OpenCL implementation on GPU (uses the GPU with the highest device index)
+		OPEN_CL_GPU_0,		// Use OpenCL implementation on GPU
+		OPEN_CL_GPU_1		// Use OpenCL implementation on GPU
+	}
 
+	final Method method;
 	final cl_device_id device;
 	final cl_context context;
 	final cl_command_queue commandQueue;
@@ -73,72 +83,109 @@ public class OpenCLSpeedTest
 	public static void main(final String args[])
 	{
 		System.out.println("Warning: The program may lead to issues (crash) in case you GPU is busy doing other stuff, e.g. driving a large external monitor.");
+		System.out.println();
 
-//		final int size = 100000000;		// 100 million
-		final int size = 10000;		// 100 million
+		final int size = 100000000;		// 100 million
 
-		int steps = 2000;
+		int steps;
 
-		OpenCLSpeedTest testProgramOnGPU = new OpenCLSpeedTest(CL_DEVICE_TYPE_GPU, 0, 128);
-		System.out.print("GPU, 128: ");
-		testProgramOnGPU.runWithInitialValuesAndRates(i -> 1.0f, i -> 1.0f, size, steps);
-		System.out.print("GPU, 128: ");
-		testProgramOnGPU.runWithInitialValuesAndRates(i -> 0.0f, i -> 1.0f, size, steps);
-		System.out.print("GPU, 128: ");
-		testProgramOnGPU.runWithInitialValuesAndRates(i -> i < size/2 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
-		System.out.print("GPU, 128: ");
-		testProgramOnGPU.runWithInitialValuesAndRates(i -> i % 2 == 0 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
-		System.out.print("GPU, 128: ");
-		testProgramOnGPU.runWithInitialValuesAndRates(i -> (i/2) % 2 == 0 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
-		System.out.print("GPU, 128: ");
-		testProgramOnGPU.runWithInitialValuesAndRates(i -> (i/8) % 2 == 0 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
-		System.out.print("GPU, 128: ");
-		testProgramOnGPU.runWithInitialValuesAndRates(i -> (i/24) % 2 == 0 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
+		steps = 200;
+
+		List<Function<Integer, Float>> initialValues = List.of(
+				i -> 1.0f,										// Initial value constant 1.: 111111111111111111111111111111111111111111111111...111111111111111111111111111111111111111111111111
+				i -> 0.0f,										// Initial value constant 0.: 000000000000000000000000000000000000000000000000...000000000000000000000000000000000000000000000000
+				i -> i < size/2 ? 0.0f : 1.0f,					// Initial value 50% 0 and 1: 000000000000000000000000000000000000000000000000...111111111111111111111111111111111111111111111111 
+				i -> i % 2 == 0 ? 0.0f : 1.0f,					// Initial value 50% 0 and 1: 010101010101010101010101010101010101010101010101...010101010101010101010101010101010101010101010101
+				i -> (i/2) % 2 == 0 ? 0.0f : 1.0f,				// Initial value 50% 0 and 1: 001100110011001100110011001100110011001100110011...001100110011001100110011001100110011001100110011
+				i -> (i/8) % 2 == 0 ? 0.0f : 1.0f,				// Initial value 50% 0 and 1: 000000001111111100000000111111110000000011111111...000000001111111100000000111111110000000011111111
+				i -> (i/512) % 2 == 0 ? 0.0f : 1.0f				// Initial value 50% 0 and 1: 000000000000000000000000111111111111111111111111...111111111111111100000000000000000000000011111111
+		);
+
+		/*
+		 * Java code
+		 */
+		System.out.println("Java:");
+		OpenCLSpeedTest testProgramJava = new OpenCLSpeedTest(Method.JAVA);
+		for(Function<Integer, Float> initialValue : initialValues) {
+			testProgramJava.runWithInitialValuesAndRates(initialValue, i -> 1.0f, size, steps);
+		}
+		testProgramJava.cleanUp();
 
 		System.out.println();
 
-		OpenCLSpeedTest testProgramOnCPU = new OpenCLSpeedTest(CL_DEVICE_TYPE_CPU, 0, 128);
-		System.out.print("CPU, 128: ");
-		testProgramOnCPU.runWithInitialValuesAndRates(i -> 1.0f, i -> 1.0f, size, steps);
-		System.out.print("CPU, 128: ");
-		testProgramOnCPU.runWithInitialValuesAndRates(i -> 0.0f, i -> 1.0f, size, steps);
-		System.out.print("CPU, 128: ");
-		testProgramOnCPU.runWithInitialValuesAndRates(i -> i < size/2 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
-		System.out.print("CPU, 128: ");
-		testProgramOnCPU.runWithInitialValuesAndRates(i -> i % 2 == 0 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
-		System.out.print("CPU, 128: ");
-		testProgramOnCPU.runWithInitialValuesAndRates(i -> (i/2) % 2 == 0 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
-		System.out.print("CPU, 128: ");
-		testProgramOnCPU.runWithInitialValuesAndRates(i -> (i/8) % 2 == 0 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
-		System.out.print("CPU, 128: ");
-		testProgramOnCPU.runWithInitialValuesAndRates(i -> (i/24) % 2 == 0 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
+		/*
+		 * OpenCL with CPU
+		 */
+		System.out.println("OpenCL on CPU:");
+		OpenCLSpeedTest testProgramOnCPU1 = new OpenCLSpeedTest(Method.OPEN_CL_CPU);
+		for(Function<Integer, Float> initialValue : initialValues) {
+			testProgramOnCPU1.runWithInitialValuesAndRates(initialValue, i -> 1.0f, size, steps);
+		}
 
-		OpenCLSpeedTest testProgramOnCPU2 = new OpenCLSpeedTest(CL_DEVICE_TYPE_CPU, 0, 1);
-		System.out.print("CPU, 128: ");
-		testProgramOnCPU2.runWithInitialValuesAndRates(i -> 1.0f, i -> 1.0f, size, steps);
-		System.out.print("CPU, 128: ");
-		testProgramOnCPU2.runWithInitialValuesAndRates(i -> 0.0f, i -> 1.0f, size, steps);
-		System.out.print("CPU, 128: ");
-		testProgramOnCPU2.runWithInitialValuesAndRates(i -> i < size/2 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
-		System.out.print("CPU, 128: ");
-		testProgramOnCPU2.runWithInitialValuesAndRates(i -> i % 2 == 0 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
-		System.out.print("CPU, 128: ");
-		testProgramOnCPU2.runWithInitialValuesAndRates(i -> (i/2) % 2 == 0 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
-		System.out.print("CPU, 128: ");
-		testProgramOnCPU2.runWithInitialValuesAndRates(i -> (i/8) % 2 == 0 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
-		System.out.print("CPU, 128: ");
-		testProgramOnCPU2.runWithInitialValuesAndRates(i -> (i/24) % 2 == 0 ? 0.0f : 1.0f, i -> 1.0f, size, steps);
+		System.out.println();
+
+		steps = 20000;
+
+		/*
+		 * OpenCL with GPU
+		 */
+//		System.out.println("OpenCL on GPU (Intel HD 630):");
+//		OpenCLSpeedTest testProgramOnGPU = new OpenCLSpeedTest(Method.OPEN_CL_GPU_0);
+//		for(Function<Integer, Float> initialValue : initialValues) {
+//			testProgramOnGPU.runWithInitialValuesAndRates(initialValue, i -> 1.0f, size, steps);
+//		}
+//		testProgramOnGPU.cleanUp();
+//
+//		System.out.println();
+
+		/*
+		 * OpenCL with GPU
+		 */
+		System.out.println("OpenCL on GPU (AMD Radeon Pro 560):");
+		OpenCLSpeedTest testProgramOnGPU1 = new OpenCLSpeedTest(Method.OPEN_CL_GPU);
+		for(Function<Integer, Float> initialValue : initialValues) {
+			testProgramOnGPU1.runWithInitialValuesAndRates(initialValue, i -> 1.0f, size, steps);
+		}
+		testProgramOnGPU1.cleanUp();
+
+		System.out.println();
 	}
 
 	/**
 	 * Create the test setup. Initializes OpenCL on the given device.
 	 * 
-	 * @param clDeviceType The device type. May be CL_DEVICE_TYPE_CPU, CL_DEVICE_TYPE_GPU or CL_DEVICE_TYPE_ALL.
-	 * @param deviceIndex The index of the device, in case there are multiple. E.g. on a MacBook Pro 2017 you have two graphic cards: 0 = Intel HD 630, 1 = AMD Radeon Pro 560.
-	 * @param localWorkSize The local work size to be used.
+	 * @param method Specify which platform / device we use (Java, OpenCL CPU, OpenCL GPU)
 	 */
-	public OpenCLSpeedTest(final long clDeviceType, final int deviceIndex, final int localWorkSize) {
+	public OpenCLSpeedTest(final Method method) {
 		super();
+		this.method = method;
+
+		final long clDeviceType;
+		final int deviceIndex;
+
+		switch(method) {
+		case OPEN_CL_CPU:
+		default:
+			clDeviceType = CL_DEVICE_TYPE_CPU;
+			deviceIndex = 0;
+			break;
+		case OPEN_CL_GPU:
+			clDeviceType = CL_DEVICE_TYPE_GPU;
+			deviceIndex = -1;
+			break;
+		case OPEN_CL_GPU_0:
+			clDeviceType = CL_DEVICE_TYPE_GPU;
+			deviceIndex = 0;
+			break;
+		case OPEN_CL_GPU_1:
+			clDeviceType = CL_DEVICE_TYPE_GPU;
+			deviceIndex = 1;
+			break;
+		}
+
+		/*
+		 * Initialize OpenCL (for method=JAVA this is not needed, we do it anyway).
+		 */
 
 		// The platform, device type and device number
 		// that will be used
@@ -169,7 +216,8 @@ public class OpenCLSpeedTest
 		// Obtain a device ID
 		final cl_device_id devices[] = new cl_device_id[numDevices];
 		clGetDeviceIDs(platform, clDeviceType, numDevices, devices, null);
-		device = devices[deviceIndex];
+		final int clDeviceIndex = deviceIndex >= 0 ? deviceIndex : (devices.length + deviceIndex);
+		device = devices[clDeviceIndex];
 
 		// Create a context for the selected device
 		context = clCreateContext(contextProperties, 1, new cl_device_id[]{ device }, null, null, null);
@@ -186,7 +234,7 @@ public class OpenCLSpeedTest
 	/**
 	 * The source code of the OpenCL program to execute
 	 */
-	private static String programSource1 =
+	private static String programSource =
 			"__kernel void "+
 					"sampleKernel(__global const float *a,"
 					+ "             __global const float *b,"
@@ -205,28 +253,6 @@ public class OpenCLSpeedTest
 					+ "}";
 
 	/**
-	 * The source code of the OpenCL program to execute
-	 */
-	private static String programSource =
-			"__kernel void "+
-					"sampleKernel(__global const float *a,"
-					+ "             __global const float *b,"
-					+ "             __global float *c,"
-					+ "             const int length)"
-					+ "{"
-					+ "  int steps = get_global_id(0);"
-					+ "  for(int i=0; i<length; i++) {"
-					+ "    float x = a[i];"
-					+ "    float r = b[i];"
-					+ "    for(int j=0; j<steps; j++) {"
-					+ "      x = x + r * x / steps;"
-					+ "    }"
-					+ "    c[i] = x;"					
-					+ "  }"
-					+ "}";
-
-
-	/**
 	 * Run the test program.
 	 * 
 	 * @param initialValue Initial value as a function of the index of the vector.
@@ -238,89 +264,109 @@ public class OpenCLSpeedTest
 		// Create input- and output data
 		final float srcArrayA[] = new float[size];
 		final float srcArrayB[] = new float[size];
-		final float dstArray[] = new float[size];
+		final float dstArray[];
 		for (int i=0; i<size; i++)
 		{
 			srcArrayA[i] = initialValue.apply(i);
 			srcArrayB[i] = rate.apply(i);
 		}
-		final Pointer srcA = Pointer.to(srcArrayA);
-		final Pointer srcB = Pointer.to(srcArrayB);
-		final Pointer dst = Pointer.to(dstArray);
 
-		// Create the program from the source code
-		final cl_program program = clCreateProgramWithSource(context, 1, new String[]{ programSource }, null, null);
+		if(method.equals(Method.JAVA)) {
 
-		long timeCompileStart = System.currentTimeMillis();
+			long timeCalcStart = System.currentTimeMillis();
 
-		// Build the program
-		clBuildProgram(program, 0, null, null, null, null);
+			dstArray = pureJavaBenchmark(srcArrayA, srcArrayB, steps);
 
-		// Create the kernel
-		final cl_kernel kernel = clCreateKernel(program, "sampleKernel", null);
+			long timeCalcEnd = System.currentTimeMillis();
 
-		long timeCompileEnd = System.currentTimeMillis();
+			System.out.print(String.format(" %7d steps ", steps));
+			System.out.print(String.format("\t compile: %5s  ", "---"));
+			System.out.print(String.format("     alloc: %5s  ", "---"));
+			System.out.print(String.format("      calc: %5.2f s", (timeCalcEnd-timeCalcStart)/1000.0));
+			System.out.print(String.format(" (%6.2f ms / step)", (double)(timeCalcEnd-timeCalcStart)/steps));
+		}
+		else {
+			dstArray = new float[size];
+			final Pointer srcA = Pointer.to(srcArrayA);
+			final Pointer srcB = Pointer.to(srcArrayB);
+			final Pointer dst = Pointer.to(dstArray);
 
-		// Allocate the memory objects for the input- and output data
-		final cl_mem memObjects[] = new cl_mem[3];
-		memObjects[0] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, Sizeof.cl_float * size, srcA, null);
-		memObjects[1] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, Sizeof.cl_float * size, srcB, null);
-		memObjects[2] = clCreateBuffer(context, CL_MEM_READ_WRITE, Sizeof.cl_float * size, null, null);
+			// Create the program from the source code
+			final cl_program program = clCreateProgramWithSource(context, 1, new String[]{ programSource }, null, null);
 
-		// Set the arguments for the kernel
-		clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(memObjects[0]));
-		clSetKernelArg(kernel, 1, Sizeof.cl_mem, Pointer.to(memObjects[1]));
-		clSetKernelArg(kernel, 2, Sizeof.cl_mem, Pointer.to(memObjects[2]));
-		clSetKernelArg(kernel, 3, Sizeof.cl_int, Pointer.to(new int[] { steps }));
+			long timeCompileStart = System.currentTimeMillis();
 
-		// Set the work-item dimensions
-		final long global_work_size[] = new long[] { size };
-		final long local_work_size[] = null; //new long[] { localWorkSize };
+			// Build the program
+			clBuildProgram(program, 0, null, null, null, null);
 
-		long timePrepareEnd = System.currentTimeMillis();
+			// Create the kernel
+			final cl_kernel kernel = clCreateKernel(program, "sampleKernel", null);
 
-		// Execute the kernel
-		clEnqueueNDRangeKernel(commandQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null);
+			long timeCompileEnd = System.currentTimeMillis();
 
-		// Read the output data
-		clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE, 0, size * Sizeof.cl_float, dst, 0, null, null);
+			// Allocate the memory objects for the input- and output data
+			final cl_mem memObjects[] = new cl_mem[3];
+			memObjects[0] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, Sizeof.cl_float * size, srcA, null);
+			memObjects[1] = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, Sizeof.cl_float * size, srcB, null);
+			memObjects[2] = clCreateBuffer(context, CL_MEM_READ_WRITE, Sizeof.cl_float * size, null, null);
 
-		long timeCalcEnd = System.currentTimeMillis();
+			// Set the arguments for the kernel
+			clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(memObjects[0]));
+			clSetKernelArg(kernel, 1, Sizeof.cl_mem, Pointer.to(memObjects[1]));
+			clSetKernelArg(kernel, 2, Sizeof.cl_mem, Pointer.to(memObjects[2]));
+			clSetKernelArg(kernel, 3, Sizeof.cl_int, Pointer.to(new int[] { steps }));
 
-		// Release kernel, program, and memory objects
-		clReleaseMemObject(memObjects[0]);
-		clReleaseMemObject(memObjects[1]);
-		clReleaseMemObject(memObjects[2]);
+			// Set the work-item dimensions
+			final long global_work_size[] = new long[] { size };
+			final long local_work_size[] = null;	// if you do not specify, OpenCL will try to choose optimal value
 
-		clReleaseKernel(kernel);
-		clReleaseProgram(program);
+			long timePrepareEnd = System.currentTimeMillis();
 
-		System.out.print(String.format("\t compile %5.3f s", (timeCompileEnd-timeCompileStart)/1000.0));
-		System.out.print(String.format("\t   alloc %5.3f s", (timePrepareEnd-timeCompileEnd)/1000.0));
-		System.out.print(String.format("\t    calc %5.3f s", (timeCalcEnd-timePrepareEnd)/1000.0));
+			// Execute the kernel
+			clEnqueueNDRangeKernel(commandQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null);
+
+			// Read the output data
+			clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE, 0, size * Sizeof.cl_float, dst, 0, null, null);
+
+			long timeCalcEnd = System.currentTimeMillis();
+
+			// Release kernel, program, and memory objects
+			clReleaseMemObject(memObjects[0]);
+			clReleaseMemObject(memObjects[1]);
+			clReleaseMemObject(memObjects[2]);
+
+			clReleaseKernel(kernel);
+			clReleaseProgram(program);
+
+			System.out.print(String.format(" %7d steps ", steps));
+			System.out.print(String.format("\t compile: %5.2f s", (timeCompileEnd-timeCompileStart)/1000.0));
+			System.out.print(String.format("     alloc: %5.2f s", (timePrepareEnd-timeCompileEnd)/1000.0));
+			System.out.print(String.format("      calc: %5.2f s", (timeCalcEnd-timePrepareEnd)/1000.0));
+			System.out.print(String.format(" (%6.2f ms / step)", (double)(timeCalcEnd-timePrepareEnd)/steps));
+		}
 
 		// Verify the result
-		boolean passed = true;
-		final float epsilon = 1e-7f;
-
-		float x = 1.0f;
-		float r = 1.0f;
-		if(x != 0) {
-			for(int j=0; j<steps; j++) {
-				x = x + 1.0f * x / steps;
-			}
-		}
-
-		for (int i=0; i<size; i++) {
-			final float y = dstArray[i];
-			final boolean epsilonEqual = Math.abs(srcArrayA[i] * x - dstArray[i]) <= epsilon * Math.abs(x);
-			if (!epsilonEqual)
-			{
-				passed = false;
-				break;
-			}
-		}
-		System.out.print("\t test "+(passed?"PASSED":"FAILED"));
+//		boolean passed = true;
+//		final float epsilon = 1e-7f;
+//
+//		float x = 1.0f;
+//		float r = 1.0f;
+//		if(x != 0) {
+//			for(int j=0; j<steps; j++) {
+//				x = x + 1.0f * x / steps;
+//			}
+//		}
+//
+//		for (int i=0; i<size; i++) {
+//			final float y = dstArray[i];
+//			final boolean epsilonEqual = Math.abs(srcArrayA[i] * x - dstArray[i]) <= epsilon * Math.abs(x);
+//			if (!epsilonEqual)
+//			{
+//				passed = false;
+//				break;
+//			}
+//		}
+//		System.out.print("\t test "+(passed?"PASSED":"FAILED"));
 
 		double numberOfNonZeroInitialValues = IntStream.range(0, size).mapToDouble(i -> initialValue.apply(i)).filter(u -> u > 0).count();
 		System.out.print("\t" + Math.round(numberOfNonZeroInitialValues/size*100) + "%");
@@ -338,23 +384,18 @@ public class OpenCLSpeedTest
 
 		float[] result = new float[initialValue.length];
 
-		long timeJavaStart = System.currentTimeMillis();
-
-		for (int i=0; i<initialValue.length; i++)
+		IntStream.range(0, initialValue.length).parallel().forEach(i ->
+		//		for (int i=0; i<initialValue.length; i++)
 		{
 			float x = initialValue[i];
 			float r = rate[i];
 			if(x != 0) {
 				for(int j=0; j<steps; j++) {
-					x = x + 1.0f * x / steps;
+					x = x + r * x / steps;
 				}
 			}
 			result[i] = x;
-		}
-
-		long timeJavaEnd = System.currentTimeMillis();
-
-		System.out.println((timeJavaEnd-timeJavaStart)/1000.0);
+		});
 
 		return result;
 	}
