@@ -46,8 +46,6 @@ import org.jocl.cl_mem;
 import org.jocl.cl_platform_id;
 import org.jocl.cl_program;
 
-import com.christianfries.opencl.examples.OpenCLSpeedTest.Method;
-
 /**
  * An example illustrating the behaviour of SIMD versus MIMD on code that contains an if-branch.
  * 

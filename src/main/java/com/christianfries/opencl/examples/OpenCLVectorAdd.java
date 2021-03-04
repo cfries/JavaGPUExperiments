@@ -30,10 +30,11 @@ import static org.jocl.CL.clReleaseMemObject;
 import static org.jocl.CL.clReleaseProgram;
 import static org.jocl.CL.clSetKernelArg;
 
-import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
-import java.util.stream.IntStream;
 
 import org.jocl.CL;
 import org.jocl.Pointer;
@@ -46,8 +47,6 @@ import org.jocl.cl_kernel;
 import org.jocl.cl_mem;
 import org.jocl.cl_platform_id;
 import org.jocl.cl_program;
-
-import com.christianfries.opencl.examples.OpenCLVectorAdd.Method;
 
 /**
  * An example illustrating adding two vectors using OpenCL
@@ -72,8 +71,9 @@ public class OpenCLVectorAdd
 	 * The entry point of this sample
 	 *
 	 * @param args Not used
+	 * @throws InterruptedException 
 	 */
-	public static void main(final String args[])
+	public static void main(final String args[]) throws InterruptedException
 	{
 		System.out.println("Warning: The program may lead to issues (crash) in case you GPU is busy doing other stuff, e.g. driving a large external monitor.");
 		System.out.println();
@@ -194,10 +194,9 @@ public class OpenCLVectorAdd
 	/**
 	 * Run the test program.
 	 * 
-	 * @param initialValue Initial value as a function of the index of the vector.
-	 * @param rate Rate as a function of the index of the vector.
-	 * @param size Size of the vector to be used. This parameter scales the time required for the calculation.
-	 * @param steps Number of approximation steps to be used. This parameter scales the time required for the calculation.
+	 * @param arrayA The array representing the vector a.
+	 * @param arrayB The array representing the vector b.
+	 * @return The result of a + b.
 	 */
 	private float[] add(float[] arrayA, float[] arrayB) {
 
@@ -217,7 +216,7 @@ public class OpenCLVectorAdd
 		clBuildProgram(program, 0, null, null, null, null);
 
 		// Create the kernel
-		final cl_kernel kernel = clCreateKernel(program, "add", null);
+		final cl_kernel kernelAdd = clCreateKernel(program, "add", null);
 
 		long timeCompileEnd = System.currentTimeMillis();
 
@@ -228,18 +227,18 @@ public class OpenCLVectorAdd
 		memObjects[2] = clCreateBuffer(context, CL_MEM_READ_WRITE, Sizeof.cl_float * size, null, null);
 
 		// Set the arguments for the kernel
-		clSetKernelArg(kernel, 0, Sizeof.cl_mem, Pointer.to(memObjects[0]));
-		clSetKernelArg(kernel, 1, Sizeof.cl_mem, Pointer.to(memObjects[1]));
-		clSetKernelArg(kernel, 2, Sizeof.cl_mem, Pointer.to(memObjects[2]));
+		clSetKernelArg(kernelAdd, 0, Sizeof.cl_mem, Pointer.to(memObjects[0]));
+		clSetKernelArg(kernelAdd, 1, Sizeof.cl_mem, Pointer.to(memObjects[1]));
+		clSetKernelArg(kernelAdd, 2, Sizeof.cl_mem, Pointer.to(memObjects[2]));
 
 		// Set the work-item dimensions
-		final long global_work_size[] = new long[] { size };
-		final long local_work_size[] = null;	// if you do not specify, OpenCL will try to choose optimal value
+		final long globalWorkSize[] = new long[] { size };
+		final long localWorkSize[] = null;	// if you do not specify, OpenCL will try to choose optimal value
 
 		long timePrepareEnd = System.currentTimeMillis();
 
 		// Execute the kernel
-		clEnqueueNDRangeKernel(commandQueue, kernel, 1, null, global_work_size, local_work_size, 0, null, null);
+		clEnqueueNDRangeKernel(commandQueue, kernelAdd, 1, null, globalWorkSize, localWorkSize, 0, null, null);
 
 		// Read the output data
 		clEnqueueReadBuffer(commandQueue, memObjects[2], CL_TRUE, 0, size * Sizeof.cl_float, dst, 0, null, null);
@@ -251,9 +250,35 @@ public class OpenCLVectorAdd
 		clReleaseMemObject(memObjects[1]);
 		clReleaseMemObject(memObjects[2]);
 
-		clReleaseKernel(kernel);
+		clReleaseKernel(kernelAdd);
 		clReleaseProgram(program);
 		
+		return result;
+	}
+
+	private float[] addJavaUsingExecutor(float[] arrayA, float[] arrayB) throws InterruptedException {
+		int size = arrayA.length;
+		final float[] result = new float[size];
+		
+		int numberOfTask = 8;
+		
+		Function<Integer, Runnable> addTask = k -> () -> {
+			int startIndex = size * k / numberOfTask;
+			int endIndex = size * (k+1) / numberOfTask;
+			
+			for(int i=startIndex; i<endIndex; i++) {
+				result[i] = arrayA[i] + arrayB[i] ;
+			}
+		};
+
+		ExecutorService executor = Executors.newFixedThreadPool(numberOfTask);
+		for(int k=0; k<numberOfTask; k++) {
+			executor.submit(addTask.apply(k));
+		}
+
+		executor.shutdown();
+		executor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+
 		return result;
 	}
 }
