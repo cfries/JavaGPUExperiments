@@ -88,28 +88,32 @@ public class OpenCLSpeedTest
 		int steps;
 
 		steps = 200;
-		
+
 		List<Function<Integer, Float>> initialValues = List.of(
 				i -> 1.0f,									// Initial value constant 1.: 111111111111111111111111111111111111111111111111...111111111111111111111111111111111111111111111111
 				i -> 0.0f,									// Initial value constant 0.: 000000000000000000000000000000000000000000000000...000000000000000000000000000000000000000000000000
 				i -> i < size/2 ? 0.0f : 1.0f,				// Initial value 50% 0 and 1: 000000000000000000000000000000000000000000000000...111111111111111111111111111111111111111111111111 
-				i -> i % 2 == 0 ? 0.0f : 1.0f,				// Initial value 50% 0 and 1: 010101010101010101010101010101010101010101010101...010101010101010101010101010101010101010101010101
-				i -> (i/2) % 2 == 0 ? 0.0f : 1.0f,			// Initial value 50% 0 and 1: 001100110011001100110011001100110011001100110011...001100110011001100110011001100110011001100110011
-				i -> (i/8) % 2 == 0 ? 0.0f : 1.0f,			// Initial value 50% 0 and 1: 000000001111111100000000111111110000000011111111...000000001111111100000000111111110000000011111111
-				i -> (i/16) % 2 == 0 ? 0.0f : 1.0f,			// Initial value 50% 0 and 1: 000000000000000000000000111111111111111111111111...111111111111111100000000000000000000000011111111
-				i -> (i/1024) % 2 == 0 ? 0.0f : 1.0f		// Initial value 50% 0 and 1: 0000 (1024 times) 00001111 (1024 times) 1111
-		);
+						i -> i % 2 == 0 ? 0.0f : 1.0f,				// Initial value 50% 0 and 1: 010101010101010101010101010101010101010101010101...010101010101010101010101010101010101010101010101
+								i -> (i/2) % 2 == 0 ? 0.0f : 1.0f,			// Initial value 50% 0 and 1: 001100110011001100110011001100110011001100110011...001100110011001100110011001100110011001100110011
+										i -> (i/8) % 2 == 0 ? 0.0f : 1.0f,			// Initial value 50% 0 and 1: 000000001111111100000000111111110000000011111111...000000001111111100000000111111110000000011111111
+												i -> (i/16) % 2 == 0 ? 0.0f : 1.0f,			// Initial value 50% 0 and 1: 000000000000000000000000111111111111111111111111...111111111111111100000000000000000000000011111111
+														i -> (i/1024) % 2 == 0 ? 0.0f : 1.0f		// Initial value 50% 0 and 1: 0000 (1024 times) 00001111 (1024 times) 1111
+				);
 
 		/*
 		 * Java code
 		 */
-		System.out.println("Java:");
-		OpenCLSpeedTest testProgramJava = new OpenCLSpeedTest(Method.JAVA);
-		for(Function<Integer, Float> initialValue : initialValues) {
-			testProgramJava.runWithInitialValuesAndRates(initialValue, i -> 1.0f, size, steps);
+		try {
+			System.out.println("Java:");
+			OpenCLSpeedTest testProgramJava = new OpenCLSpeedTest(Method.JAVA);
+			for(Function<Integer, Float> initialValue : initialValues) {
+				testProgramJava.runWithInitialValuesAndRates(initialValue, i -> 1.0f, size, steps);
+			}
+			testProgramJava.cleanUp();
 		}
-		testProgramJava.cleanUp();
-
+		catch(Exception e) {
+			System.out.println(e.getMessage());
+		}
 		System.out.println();
 
 		steps = 1000;
@@ -117,12 +121,18 @@ public class OpenCLSpeedTest
 		/*
 		 * OpenCL with CPU
 		 */
-		System.out.println("OpenCL on CPU:");
-		OpenCLSpeedTest testProgramOnCPU = new OpenCLSpeedTest(Method.OPEN_CL_CPU);
-		for(Function<Integer, Float> initialValue : initialValues) {
-			testProgramOnCPU.runWithInitialValuesAndRates(initialValue, i -> 1.0f, size, steps);
+		try {
+			System.out.println("OpenCL on CPU:");
+			OpenCLSpeedTest testProgramOnCPU = new OpenCLSpeedTest(Method.OPEN_CL_CPU);
+			for(Function<Integer, Float> initialValue : initialValues) {
+				testProgramOnCPU.runWithInitialValuesAndRates(initialValue, i -> 1.0f, size, steps);
+			}
+			testProgramOnCPU.cleanUp();
 		}
-		testProgramOnCPU.cleanUp();
+		catch(Exception e) {
+			System.out.println(e.getMessage());
+		}
+		System.out.println();
 
 		System.out.println();
 
@@ -131,24 +141,30 @@ public class OpenCLSpeedTest
 		/*
 		 * OpenCL with GPU
 		 */
-//		System.out.println("OpenCL on GPU (Intel HD 630):");
-//		OpenCLSpeedTest testProgramOnGPU = new OpenCLSpeedTest(Method.OPEN_CL_GPU_0);
-//		for(Function<Integer, Float> initialValue : initialValues) {
-//			testProgramOnGPU.runWithInitialValuesAndRates(initialValue, i -> 1.0f, size, steps);
-//		}
-//		testProgramOnGPU.cleanUp();
-//
-//		System.out.println();
+		//		System.out.println("OpenCL on GPU (Intel HD 630):");
+		//		OpenCLSpeedTest testProgramOnGPU = new OpenCLSpeedTest(Method.OPEN_CL_GPU_0);
+		//		for(Function<Integer, Float> initialValue : initialValues) {
+		//			testProgramOnGPU.runWithInitialValuesAndRates(initialValue, i -> 1.0f, size, steps);
+		//		}
+		//		testProgramOnGPU.cleanUp();
+		//
+		//		System.out.println();
 
 		/*
 		 * OpenCL with GPU
 		 */
-		System.out.println("OpenCL on GPU (uses GPU with highest device index):");
-		OpenCLSpeedTest testProgramOnGPU1 = new OpenCLSpeedTest(Method.OPEN_CL_GPU);
-		for(Function<Integer, Float> initialValue : initialValues) {
-			testProgramOnGPU1.runWithInitialValuesAndRates(initialValue, i -> 1.0f, size, steps);
+		try {
+			System.out.println("OpenCL on GPU (uses GPU with highest device index):");
+			OpenCLSpeedTest testProgramOnGPU1 = new OpenCLSpeedTest(Method.OPEN_CL_GPU);
+			for(Function<Integer, Float> initialValue : initialValues) {
+				testProgramOnGPU1.runWithInitialValuesAndRates(initialValue, i -> 1.0f, size, steps);
+			}
+			testProgramOnGPU1.cleanUp();
 		}
-		testProgramOnGPU1.cleanUp();
+		catch(Exception e) {
+			System.out.println(e.getMessage());
+		}
+		System.out.println();
 
 		System.out.println();
 	}
@@ -348,27 +364,27 @@ public class OpenCLSpeedTest
 		}
 
 		// Verify the result
-//		boolean passed = true;
-//		final float epsilon = 1e-7f;
-//
-//		float x = 1.0f;
-//		float r = 1.0f;
-//		if(x != 0) {
-//			for(int j=0; j<steps; j++) {
-//				x = x + 1.0f * x / steps;
-//			}
-//		}
-//
-//		for (int i=0; i<size; i++) {
-//			final float y = dstArray[i];
-//			final boolean epsilonEqual = Math.abs(srcArrayA[i] * x - dstArray[i]) <= epsilon * Math.abs(x);
-//			if (!epsilonEqual)
-//			{
-//				passed = false;
-//				break;
-//			}
-//		}
-//		System.out.print("\t test "+(passed?"PASSED":"FAILED"));
+		//		boolean passed = true;
+		//		final float epsilon = 1e-7f;
+		//
+		//		float x = 1.0f;
+		//		float r = 1.0f;
+		//		if(x != 0) {
+		//			for(int j=0; j<steps; j++) {
+		//				x = x + 1.0f * x / steps;
+		//			}
+		//		}
+		//
+		//		for (int i=0; i<size; i++) {
+		//			final float y = dstArray[i];
+		//			final boolean epsilonEqual = Math.abs(srcArrayA[i] * x - dstArray[i]) <= epsilon * Math.abs(x);
+		//			if (!epsilonEqual)
+		//			{
+		//				passed = false;
+		//				break;
+		//			}
+		//		}
+		//		System.out.print("\t test "+(passed?"PASSED":"FAILED"));
 
 		double numberOfNonZeroInitialValues = IntStream.range(0, size).mapToDouble(i -> initialValue.apply(i)).filter(u -> u > 0).count();
 		System.out.print("\t" + Math.round(numberOfNonZeroInitialValues/size*100) + "%");
