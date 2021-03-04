@@ -323,7 +323,7 @@ public class ParallelComputingAnimation extends Application {
 		 * Define UI actions for update and reset
 		 */
 		Runnable updateUI = () -> {
-			description.setText("Clock cycle " + cycle + ".");
+			description.setText("Instruction (clock) cycle " + cycle + ".");
 		};
 
 		Runnable resetUI = () -> {
