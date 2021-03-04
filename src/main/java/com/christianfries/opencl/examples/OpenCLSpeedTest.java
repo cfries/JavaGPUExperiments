@@ -85,20 +85,21 @@ public class OpenCLSpeedTest
 		System.out.println("Warning: The program may lead to issues (crash) in case you GPU is busy doing other stuff, e.g. driving a large external monitor.");
 		System.out.println();
 
-		final int size = 100000000;		// 100 million
+		final int size = 102400000;		// 102.4 million
 
 		int steps;
 
 		steps = 200;
 
 		List<Function<Integer, Float>> initialValues = List.of(
-				i -> 1.0f,										// Initial value constant 1.: 111111111111111111111111111111111111111111111111...111111111111111111111111111111111111111111111111
-				i -> 0.0f,										// Initial value constant 0.: 000000000000000000000000000000000000000000000000...000000000000000000000000000000000000000000000000
-				i -> i < size/2 ? 0.0f : 1.0f,					// Initial value 50% 0 and 1: 000000000000000000000000000000000000000000000000...111111111111111111111111111111111111111111111111 
-				i -> i % 2 == 0 ? 0.0f : 1.0f,					// Initial value 50% 0 and 1: 010101010101010101010101010101010101010101010101...010101010101010101010101010101010101010101010101
-				i -> (i/2) % 2 == 0 ? 0.0f : 1.0f,				// Initial value 50% 0 and 1: 001100110011001100110011001100110011001100110011...001100110011001100110011001100110011001100110011
-				i -> (i/8) % 2 == 0 ? 0.0f : 1.0f,				// Initial value 50% 0 and 1: 000000001111111100000000111111110000000011111111...000000001111111100000000111111110000000011111111
-				i -> (i/512) % 2 == 0 ? 0.0f : 1.0f				// Initial value 50% 0 and 1: 000000000000000000000000111111111111111111111111...111111111111111100000000000000000000000011111111
+				i -> 1.0f,									// Initial value constant 1.: 111111111111111111111111111111111111111111111111...111111111111111111111111111111111111111111111111
+				i -> 0.0f,									// Initial value constant 0.: 000000000000000000000000000000000000000000000000...000000000000000000000000000000000000000000000000
+				i -> i < size/2 ? 0.0f : 1.0f,				// Initial value 50% 0 and 1: 000000000000000000000000000000000000000000000000...111111111111111111111111111111111111111111111111 
+				i -> i % 2 == 0 ? 0.0f : 1.0f,				// Initial value 50% 0 and 1: 010101010101010101010101010101010101010101010101...010101010101010101010101010101010101010101010101
+				i -> (i/2) % 2 == 0 ? 0.0f : 1.0f,			// Initial value 50% 0 and 1: 001100110011001100110011001100110011001100110011...001100110011001100110011001100110011001100110011
+				i -> (i/8) % 2 == 0 ? 0.0f : 1.0f,			// Initial value 50% 0 and 1: 000000001111111100000000111111110000000011111111...000000001111111100000000111111110000000011111111
+				i -> (i/16) % 2 == 0 ? 0.0f : 1.0f,			// Initial value 50% 0 and 1: 000000000000000000000000111111111111111111111111...111111111111111100000000000000000000000011111111
+				i -> (i/1024) % 2 == 0 ? 0.0f : 1.0f		// Initial value 50% 0 and 1: 000000000000000000000000111111111111111111111111...111111111111111100000000000000000000000011111111
 		);
 
 		/*
@@ -112,6 +113,8 @@ public class OpenCLSpeedTest
 		testProgramJava.cleanUp();
 
 		System.out.println();
+
+		steps = 1000;
 
 		/*
 		 * OpenCL with CPU
@@ -237,10 +240,10 @@ public class OpenCLSpeedTest
 	 */
 	private static String programSource =
 			"__kernel void "+
-					"sampleKernel(__global const float *a,"
-					+ "             __global const float *b,"
-					+ "             __global float *c,"
-					+ "             const int steps)"
+					"evolve(__global const float *a,"
+					+ "     __global const float *b,"
+					+ "     __global float *c,"
+					+ "     const int steps)"
 					+ "{"
 					+ "  int gid = get_global_id(0);"
 					+ "  float x = a[gid];"
@@ -282,8 +285,8 @@ public class OpenCLSpeedTest
 
 			System.out.print(String.format(" %7d steps ", steps));
 			System.out.print(String.format("\t compile: %5s  ", "---"));
-			System.out.print(String.format("     alloc: %5s  ", "---"));
-			System.out.print(String.format("      calc: %5.2f s", (timeCalcEnd-timeCalcStart)/1000.0));
+			System.out.print(String.format("  alloc: %5s  ", "---"));
+			System.out.print(String.format("  calc: %5.2f s", (timeCalcEnd-timeCalcStart)/1000.0));
 			System.out.print(String.format(" (%6.2f ms / step)", (double)(timeCalcEnd-timeCalcStart)/steps));
 		}
 		else {
@@ -301,7 +304,7 @@ public class OpenCLSpeedTest
 			clBuildProgram(program, 0, null, null, null, null);
 
 			// Create the kernel
-			final cl_kernel kernel = clCreateKernel(program, "sampleKernel", null);
+			final cl_kernel kernel = clCreateKernel(program, "evolve", null);
 
 			long timeCompileEnd = System.currentTimeMillis();
 
@@ -341,8 +344,8 @@ public class OpenCLSpeedTest
 
 			System.out.print(String.format(" %7d steps ", steps));
 			System.out.print(String.format("\t compile: %5.2f s", (timeCompileEnd-timeCompileStart)/1000.0));
-			System.out.print(String.format("     alloc: %5.2f s", (timePrepareEnd-timeCompileEnd)/1000.0));
-			System.out.print(String.format("      calc: %5.2f s", (timeCalcEnd-timePrepareEnd)/1000.0));
+			System.out.print(String.format("  alloc: %5.2f s", (timePrepareEnd-timeCompileEnd)/1000.0));
+			System.out.print(String.format("  calc: %5.2f s", (timeCalcEnd-timePrepareEnd)/1000.0));
 			System.out.print(String.format(" (%6.2f ms / step)", (double)(timeCalcEnd-timePrepareEnd)/steps));
 		}
 
@@ -373,9 +376,13 @@ public class OpenCLSpeedTest
 		System.out.print("\t" + Math.round(numberOfNonZeroInitialValues/size*100) + "%");
 		System.out.print("\t");
 
-		for(int i=0; i<48; i++) System.out.printf("%1.0f", initialValue.apply(i));
+		for(int i=0; i<24; i++) System.out.printf("%1.0f", initialValue.apply(i));
 		System.out.print("...");
-		for(int i=0; i<48; i++) System.out.printf("%1.0f", initialValue.apply(size/2+i));
+		for(int i=0; i<24; i++) System.out.printf("%1.0f", initialValue.apply(1024 + i));
+		System.out.print("...");
+		for(int i=0; i<24; i++) System.out.printf("%1.0f", initialValue.apply(size/2+i));
+		System.out.print("...");
+		for(int i=0; i<24; i++) System.out.printf("%1.0f", initialValue.apply(size/2 + 1024 +i));
 
 		System.out.println();
 	}
